@@ -6,3 +6,11 @@ Content-Type: application/json
 {
 
 }
+
+GET http://localhost:8081/scrapper/9678
+Content-Type: application/json
+
+
+GET http://localhost:8081/scrapper
+Content-Type: application/json
+
