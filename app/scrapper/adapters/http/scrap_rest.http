@@ -1,0 +1,8 @@
+GET http://localhost:8081/health
+
+POST http://localhost:8081/scrapper/start
+Content-Type: application/json
+
+{
+
+}

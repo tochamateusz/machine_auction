@@ -3,7 +3,10 @@ package main
 import (
 	ginzerolog "github.com/dn365/gin-zerolog"
 	"github.com/gin-gonic/gin"
+	health_controller "github.com/tochamateusz/machine_auction/app"
+	scrapper_http "github.com/tochamateusz/machine_auction/app/scrapper/adapters/http"
 	"github.com/tochamateusz/machine_auction/infrastructure"
+	"github.com/tochamateusz/machine_auction/infrastructure/server"
 )
 
 func main() {
@@ -15,6 +18,11 @@ func main() {
 	r.Use(infrastructure.Logger)
 	r.Use(ginzerolog.Logger("gin"))
 
-	r.GET("test", func(ctx *gin.Context) {})
+	health := health_controller.NewHandler()
+
+	r.GET("health", health.DbHealthCheck)
+	scrapper_http.Register(r)
+
+	server.InitServer(r)
 
 }
