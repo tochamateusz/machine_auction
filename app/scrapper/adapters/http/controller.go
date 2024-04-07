@@ -67,8 +67,29 @@ func (h *HttpScrapperApi) Get(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, auction)
 }
 
+type AuctionDTO struct {
+	Id      string `json:"id"`
+	Image   string `json:"image"`
+	Name    string `json:"name"`
+	Year    string `json:"year"`
+	Price   string `json:"price"`
+	EndDate string `json:"end_date"`
+}
+
 func (h *HttpScrapperApi) GetAll(ctx *gin.Context) {
 	auctions := h.repository.GetAll()
+	var auctionsDtos []AuctionDTO
+	for _, v := range auctions {
+		auctionDto := AuctionDTO{
+			Id:      v.Id(),
+			Image:   v.Image(),
+			Name:    v.Name(),
+			Year:    v.Year(),
+			Price:   v.Price(),
+			EndDate: v.EndDate(),
+		}
+		auctionsDtos = append(auctionsDtos, auctionDto)
+	}
 	log.Info().Msgf("GET: auction: %+v\n", auctions)
-	ctx.JSON(http.StatusOK, auctions)
+	ctx.JSON(http.StatusOK, auctionsDtos)
 }
