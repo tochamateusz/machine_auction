@@ -35,7 +35,7 @@ func Init(r *gin.Engine) {
 	}
 
 	eventBus := events.NewEventBus()
-	eventBus.Listen("test", func(ctx context.Context, message interface{}) {
+	eventBus.Listen("auctions.founded", func(ctx context.Context, message interface{}) {
 		log.Info().Msg("ON test message")
 	})
 
@@ -73,8 +73,9 @@ func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
 
 	for _, v := range auctions {
 		h.repository.Save(v)
-		h.eventBus.Dispatch("test", struct{ Test string }{Test: "test"})
-
+		h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
+			Auction: v,
+		})
 	}
 
 	ctx.Writer.WriteHeader(http.StatusOK)

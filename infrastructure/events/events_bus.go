@@ -37,6 +37,7 @@ func (e EventBus) Dispatch(topic string, message interface{}) {
 
 // Listen implements IEventBus.
 func (e EventBus) Listen(topic string, handler HandlerFnc) {
+
 	e.handlers[topic] = handler
 
 }
