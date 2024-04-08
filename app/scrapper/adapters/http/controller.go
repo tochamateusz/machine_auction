@@ -1,12 +1,14 @@
 package http
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	auctionScrapper "github.com/tochamateusz/machine_auction/app/scrapper"
 	"github.com/tochamateusz/machine_auction/domain/auction"
+	"github.com/tochamateusz/machine_auction/infrastructure/events"
 	auction_file "github.com/tochamateusz/machine_auction/infrastructure/repository/auction"
 )
 
@@ -15,6 +17,7 @@ type Key = string
 type HttpScrapperApi struct {
 	scrapper   *auctionScrapper.Scrapper
 	repository auction.Repository
+	eventBus   events.IEventBus
 }
 
 func Init(r *gin.Engine) {
@@ -31,6 +34,13 @@ func Init(r *gin.Engine) {
 		log.Fatal().Msgf("%p", err)
 	}
 
+	eventBus := events.NewEventBus()
+	eventBus.Listen("test", func(ctx context.Context, message interface{}) {
+		log.Info().Msg("ON test message")
+	})
+
+	go eventBus.Serve(context.Background())
+
 	repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
 		log.Fatal().Msgf("%p", err)
@@ -41,21 +51,30 @@ func Init(r *gin.Engine) {
 	}
 
 	http_client := HttpScrapperApi{
-		scrapper,
-		repository,
+		scrapper:   scrapper,
+		repository: repository,
+		eventBus:   eventBus,
 	}
 
-	scrapperGroup.POST("start", http_client.Login)
+	scrapper.SaveImage("")
+
+	scrapperGroup.POST("start", http_client.BaseScrap)
 	scrapperGroup.GET(":id", http_client.Get)
 	scrapperGroup.GET("", http_client.GetAll)
 
 }
 
-func (h *HttpScrapperApi) Login(ctx *gin.Context) {
-	err := h.scrapper.Login()
+func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
+	auctions, err := h.scrapper.GetAuctions()
 	if err != nil {
 		ctx.AbortWithError(http.StatusUnauthorized, err)
 		return
+	}
+
+	for _, v := range auctions {
+		h.repository.Save(v)
+		h.eventBus.Dispatch("test", struct{ Test string }{Test: "test"})
+
 	}
 
 	ctx.Writer.WriteHeader(http.StatusOK)
@@ -90,6 +109,5 @@ func (h *HttpScrapperApi) GetAll(ctx *gin.Context) {
 		}
 		auctionsDtos = append(auctionsDtos, auctionDto)
 	}
-	log.Info().Msgf("GET: auction: %+v\n", auctions)
 	ctx.JSON(http.StatusOK, auctionsDtos)
 }

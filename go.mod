@@ -24,6 +24,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
+	github.com/looplab/fsm v1.0.1 // indirect
 	github.com/mandrigin/gin-spa v0.0.0-20200212133200-790d0c0c7335 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect

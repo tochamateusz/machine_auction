@@ -42,6 +42,32 @@ func NewScrapper() (*Scrapper, error) {
 	}, nil
 }
 
+func (s *Scrapper) SaveAuctionAssets(a auction.Auction) {
+
+}
+
+func (s *Scrapper) SaveImage(url string) {
+	fullUrlFile := "https://images.ab-auction.com/17/8019/300/300/10955711_0.jpg"
+	r, e := http.Get(fullUrlFile)
+	if e != nil {
+		panic(e)
+	}
+	defer r.Body.Close()
+	// Create distination
+	f, e := os.Create("10955711_0.jpg") // "m1UIjW1.jpg"
+	if e != nil {
+		panic(e)
+	}
+	defer f.Close()
+	// Fill distination with content
+	n, e := f.ReadFrom(r.Body)
+	if e != nil {
+		panic(e)
+	}
+	fmt.Println("File size: ", n)
+
+}
+
 func (s *Scrapper) GetAuctions() ([]auction.Auction, error) {
 	auctions, err := s.getMyObservation()
 	if err != nil {
