@@ -1,0 +1,18 @@
+GET http://localhost:8081/health
+
+POST http://localhost:8081/scrapper/start
+Content-Type: application/json
+
+{
+
+}
+
+GET http://localhost:8081/scrapper/9757
+Content-Type: application/json
+
+
+GET http://localhost:8081/scrapper
+Content-Type: application/json
+
+GET http://localhost:8081/scrapper/images/9757
+Content-Type: application/json
