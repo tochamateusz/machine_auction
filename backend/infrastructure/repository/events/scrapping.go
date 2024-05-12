@@ -16,6 +16,7 @@ const storePath = "./db/scrapping-events.json"
 
 type FileScrappedAuctionsRepository struct {
 	file *os.File
+	*sync.Mutex
 }
 
 // GetAll implements scrapping.Repository.
@@ -62,10 +63,11 @@ type ScrappedAuctionsDataModel struct {
 
 // Save implements scrapping.Repository.
 func (f *FileScrappedAuctionsRepository) Save(auction scrapping.ScrappedAuctions) {
-	m := sync.RWMutex{}
-	m.Lock()
-	defer m.Unlock()
+	f.Mutex.Lock()
 
+	defer func() {
+		f.Mutex.Unlock()
+	}()
 	raw, _ := os.ReadFile(storePath)
 	scrappedAuctionsDataModel := []ScrappedAuctionsDataModel{}
 
@@ -91,7 +93,6 @@ func (f *FileScrappedAuctionsRepository) Save(auction scrapping.ScrappedAuctions
 		return
 	}
 
-	f.file.Seek(0, 0)
 	_, err = f.file.Write(bytes)
 	if err != nil {
 		log.Err(err).Msg("cannnot write auction store")
@@ -107,5 +108,6 @@ func NewFileScrappedAuctionsRepository() (scrapping.Repository, error) {
 	}
 	return &FileScrappedAuctionsRepository{
 		file,
+		&sync.Mutex{},
 	}, nil
 }

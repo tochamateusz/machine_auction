@@ -1,22 +1,31 @@
 package auction
 
 type Auction struct {
-	id      string
-	image   string
-	name    string
-	year    string
-	price   string
-	endDate string
+	id          string
+	image       string
+	name        string
+	year        string
+	price       string
+	endDate     string
+	description []string
 }
 
 func NewAuction(id, image, name, year, price, endDate string) *Auction {
 	return &Auction{
-		id, image, name, year, price, endDate,
+		id, image, name, year, price, endDate, []string{},
 	}
 }
 
 func (a *Auction) Id() string {
 	return a.id
+}
+
+func (a *Auction) Describe(d []string) {
+	a.description = d
+}
+
+func (a *Auction) Description() []string {
+	return a.description
 }
 
 func (a *Auction) Image() string {

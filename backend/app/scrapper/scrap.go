@@ -10,6 +10,10 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
+
+	// "time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/rs/zerolog/log"
@@ -21,11 +25,21 @@ const myObservation = "https://www.ab-auction.com/pl/account/myobservations"
 
 const scrappingResultDir = "./scrapping-result/"
 
+type DescriptionFounded struct {
+	Id          string
+	Description []string
+}
+
 type Scrapper struct {
-	client *http.Client
-	file   *os.File
-	done   chan struct{ Id string }
-	onDone func(id string)
+	client             *http.Client
+	file               *os.File
+	done               chan struct{ Id string }
+	descriptionFounded chan DescriptionFounded
+
+	onDone             func(id string)
+	onDescriptionFound func(DescriptionFounded)
+
+	mu *sync.Mutex
 }
 
 func NewScrapper() (*Scrapper, error) {
@@ -70,7 +84,10 @@ func NewScrapper() (*Scrapper, error) {
 		client,
 		file,
 		make(chan struct{ Id string }),
+		make(chan DescriptionFounded),
 		func(id string) {},
+		func(DescriptionFounded) {},
+		&sync.Mutex{},
 	}
 
 	go scrapper.listen(context.Background())
@@ -85,12 +102,21 @@ func (s *Scrapper) listen(ctx context.Context) {
 			{
 				s.onDone(done.Id)
 			}
+
+		case description := <-s.descriptionFounded:
+			{
+				s.onDescriptionFound(description)
+			}
 		}
 	}
 }
 
 func (s *Scrapper) RegisterDone(onDone func(done string)) {
 	s.onDone = onDone
+}
+
+func (s *Scrapper) RegisterOnDescriptionFound(onDescriptionFound func(DescriptionFounded)) {
+	s.onDescriptionFound = onDescriptionFound
 }
 
 func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
@@ -150,6 +176,24 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 		}
 	})
 
+	detailSelection := doc.Find(".details")
+	description := []string{}
+	detailSelection.Each(func(i int, s *goquery.Selection) {
+		_ = s.Find(".row").Each(func(i int, divSel *goquery.Selection) {
+			description = append(description, divSel.Text())
+		})
+	})
+
+	s.descriptionFounded <- DescriptionFounded{
+		Id:          auctionFounded.Auction.Id(),
+		Description: description,
+	}
+
+	detailFile, e := os.Create("./scrapping-result/" + auctionFounded.Auction.Id() + "/detail.html") // "m1UIjW1.jpg"
+	htmlDetailSection, _ := detailSelection.Html()
+
+	detailFile.WriteString(htmlDetailSection)
+
 	s.done <- struct{ Id string }{
 		Id: auctionFounded.Auction.Id(),
 	}
@@ -161,29 +205,41 @@ func (s *Scrapper) SaveAuctionAssets(a auction.Auction) {
 }
 
 func (s *Scrapper) SaveImage(url string, path string) {
-	r, e := http.Get(url)
-	if e != nil {
-		panic(e)
-	}
-	defer r.Body.Close()
-
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	_, err := os.Stat(path)
 	if err == nil && !errors.Is(err, os.ErrNotExist) {
 		log.Info().Msgf("File exist: %+v\n", path)
 		return
 	}
-	f, e := os.Create(path)
-	if e != nil {
-		panic(e)
+	f, err := os.Create(path)
+	if err != nil {
+		log.Err(err).Msgf("Cannot create  file: %+v\n", path)
+		return
 	}
 	defer f.Close()
 
-	n, e := f.ReadFrom(r.Body)
-	if e != nil {
-		panic(e)
+	client := &http.Client{
+		Timeout: time.Duration(time.Second * 50),
+	}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Err(err).Msgf("new request failed  %+v\n", url)
+		return
+	}
+	r, err := client.Do(req)
+	if err != nil {
+		log.Err(err).Msgf("cannot get image  %+v\n", r.Request.URL)
+		return
+	}
+	defer r.Body.Close()
+
+	n, err := f.ReadFrom(r.Body)
+	if err != nil {
+		log.Err(err).Msgf("cannot read body  %+v\n", n)
+		return
 	}
 	fmt.Println("File size: ", n)
-
 }
 
 func (s *Scrapper) GetAuctions() ([]auction.Auction, error) {

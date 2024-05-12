@@ -7,12 +7,16 @@ Content-Type: application/json
 
 }
 
-GET http://localhost:8081/scrapper/9757
+GET http://localhost:8081/scrapper/10000
 Content-Type: application/json
 
 
 GET http://localhost:8081/scrapper
 Content-Type: application/json
 
-GET http://localhost:8081/scrapper/images/9757
+GET http://localhost:8081/scrapper/images/10000
+Content-Type: application/json
+
+
+GET http://localhost:8081/scrapper/test
 Content-Type: application/json

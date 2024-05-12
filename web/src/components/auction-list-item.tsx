@@ -78,6 +78,15 @@ export const ListAuction: React.FC<Props> = ({ auction, onClick }) => {
                   {auction.end_date}
                 </Typography>
               </Box>
+              <Box sx={{ display: "flex", marginX: "0.5rem" }}>
+                <Typography variant="body2" color="text.secondary">
+                  <>
+                  {(auction.description || []).map((description)=>{
+                    return <div>{description}</div>
+                  })}
+                  </>
+                </Typography>
+              </Box>
             </CardContent>
           </Grid>
         </Grid>

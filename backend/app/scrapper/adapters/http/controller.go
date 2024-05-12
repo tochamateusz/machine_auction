@@ -38,14 +38,14 @@ func Init(r *gin.Engine) {
 	scrapper.Login()
 	scrapper.PrintCookie()
 
-	scrappingRepository, err := scrapping_events.NewFileScrappedAuctionsRepository()
-	if err != nil {
-		panic(err)
-	}
-
 	eventBus := events.NewEventBus()
 	eventBus.Listen("auction.founded", scrapper.OnAuctionFound)
 	eventBus.Listen("auctions.founded", func(ctx context.Context, message interface{}) {
+
+		scrappingRepository, err := scrapping_events.NewFileScrappedAuctionsRepository()
+		if err != nil {
+			panic(err)
+		}
 		auction, ok := message.(acutions_events.AuctionsFounded)
 		if ok == false {
 			log.Warn().Msgf("Malformed message %+v", message)
@@ -64,7 +64,7 @@ func Init(r *gin.Engine) {
 
 	repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
-		log.Fatal().Msgf("%p", err)
+		log.Fatal().Err(err).Msgf("%p", err)
 	}
 
 	http_client := HttpScrapperApi{
@@ -77,6 +77,7 @@ func Init(r *gin.Engine) {
 	scrapperGroup.GET(":id", http_client.Get)
 	scrapperGroup.GET("/images/:id", http_client.GetAllImage)
 	scrapperGroup.GET("", http_client.GetAll)
+	scrapperGroup.GET("test", http_client.TEST)
 
 }
 
@@ -99,16 +100,27 @@ func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
 		}
 	})
 
+	h.scrapper.RegisterOnDescriptionFound(func(d auctionScrapper.DescriptionFounded) {
+		acution := h.repository.Get(d.Id)
+		if acution.Id() != d.Id {
+			return
+		}
+		acution.Describe(d.Description)
+
+		go h.repository.Save(acution)
+	})
+
 	h.eventBus.Dispatch("auctions.founded", auction.AuctionsFounded{
 		Id:      uuid.NewString(),
 		Auction: auctions,
 	})
 
 	for _, v := range auctions {
-		h.repository.Save(v)
-		h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
+		go h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
 			Auction: v,
 		})
+
+		go h.repository.Save(v)
 	}
 
 	ctx.Writer.WriteHeader(http.StatusOK)
@@ -130,22 +142,37 @@ func (h *HttpScrapperApi) Get(ctx *gin.Context) {
 	auction := h.repository.Get(id)
 	log.Info().Msgf("GET: auction: %+v\n", auction)
 	ctx.JSON(http.StatusOK, AuctionDTO{
-		Id:      auction.Id(),
-		Image:   auction.Image(),
-		Name:    auction.Name(),
-		Year:    auction.Year(),
-		Price:   auction.Price(),
-		EndDate: auction.EndDate(),
+		Id:          auction.Id(),
+		Image:       auction.Image(),
+		Name:        auction.Name(),
+		Year:        auction.Year(),
+		Price:       auction.Price(),
+		EndDate:     auction.EndDate(),
+		Description: auction.Description(),
 	})
 }
 
 type AuctionDTO struct {
-	Id      string `json:"id"`
-	Image   string `json:"image"`
-	Name    string `json:"name"`
-	Year    string `json:"year"`
-	Price   string `json:"price"`
-	EndDate string `json:"end_date"`
+	Id          string   `json:"id"`
+	Image       string   `json:"image"`
+	Name        string   `json:"name"`
+	Year        string   `json:"year"`
+	Price       string   `json:"price"`
+	EndDate     string   `json:"end_date"`
+	Description []string `json:"description"`
+}
+
+func (h *HttpScrapperApi) TEST(ctx *gin.Context) {
+
+	for _, v := range []string{"test", "test1", "test2", "test3"} {
+		auction := h.repository.Get("10000")
+		if auction.Id() != "10000" {
+			return
+		}
+		auction.Describe([]string{v})
+		go h.repository.Save(auction)
+	}
+
 }
 
 func (h *HttpScrapperApi) GetAll(ctx *gin.Context) {
@@ -153,12 +180,13 @@ func (h *HttpScrapperApi) GetAll(ctx *gin.Context) {
 	var auctionsDtos []AuctionDTO
 	for _, v := range auctions {
 		auctionDto := AuctionDTO{
-			Id:      v.Id(),
-			Image:   v.Image(),
-			Name:    v.Name(),
-			Year:    v.Year(),
-			Price:   v.Price(),
-			EndDate: v.EndDate(),
+			Id:          v.Id(),
+			Image:       v.Image(),
+			Name:        v.Name(),
+			Year:        v.Year(),
+			Price:       v.Price(),
+			EndDate:     v.EndDate(),
+			Description: v.Description(),
 		}
 		auctionsDtos = append(auctionsDtos, auctionDto)
 	}
