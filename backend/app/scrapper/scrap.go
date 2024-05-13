@@ -13,14 +13,12 @@ import (
 	"sync"
 	"time"
 
-	// "time"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/rs/zerolog/log"
 	"github.com/tochamateusz/machine_auction/domain/auction"
 )
 
-const domain = "https://www.ab-auction.com"
+const domain = "https://www.ab-auction.com/pl"
 const myObservation = "https://www.ab-auction.com/pl/account/myobservations"
 
 const scrappingResultDir = "./scrapping-result/"
@@ -30,14 +28,22 @@ type DescriptionFounded struct {
 	Description []string
 }
 
+type StartingPriceFound struct {
+	Id            string
+	StartingPrice string
+}
+
 type Scrapper struct {
-	client             *http.Client
-	file               *os.File
+	client *http.Client
+	file   *os.File
+
 	done               chan struct{ Id string }
 	descriptionFounded chan DescriptionFounded
+	startingPriceFound chan StartingPriceFound
 
-	onDone             func(id string)
-	onDescriptionFound func(DescriptionFounded)
+	onDone                 func(id string)
+	onDescriptionFound     func(DescriptionFounded)
+	onStartingPriceFounded func(StartingPriceFound)
 
 	mu *sync.Mutex
 }
@@ -85,8 +91,10 @@ func NewScrapper() (*Scrapper, error) {
 		file,
 		make(chan struct{ Id string }),
 		make(chan DescriptionFounded),
+		make(chan StartingPriceFound),
 		func(id string) {},
 		func(DescriptionFounded) {},
+		func(StartingPriceFound) {},
 		&sync.Mutex{},
 	}
 
@@ -107,6 +115,11 @@ func (s *Scrapper) listen(ctx context.Context) {
 			{
 				s.onDescriptionFound(description)
 			}
+
+		case startingPrice := <-s.startingPriceFound:
+			{
+				s.onStartingPriceFounded(startingPrice)
+			}
 		}
 	}
 }
@@ -117,6 +130,10 @@ func (s *Scrapper) RegisterDone(onDone func(done string)) {
 
 func (s *Scrapper) RegisterOnDescriptionFound(onDescriptionFound func(DescriptionFounded)) {
 	s.onDescriptionFound = onDescriptionFound
+}
+
+func (s *Scrapper) RegisterOnStartingPrice(onStartingPrice func(StartingPriceFound)) {
+	s.onStartingPriceFounded = onStartingPrice
 }
 
 func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
@@ -193,6 +210,13 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 	htmlDetailSection, _ := detailSelection.Html()
 
 	detailFile.WriteString(htmlDetailSection)
+
+	startingPrice := strings.TrimSpace(doc.Find("div.mt-n2:nth-child(1) > span:nth-child(1)").Text())
+
+	s.startingPriceFound <- StartingPriceFound{
+		Id:            auctionFounded.Auction.Id(),
+		StartingPrice: startingPrice,
+	}
 
 	s.done <- struct{ Id string }{
 		Id: auctionFounded.Auction.Id(),
@@ -343,16 +367,24 @@ func (s *Scrapper) Login() error {
 	params.Add("login", "login")
 
 	postData := strings.NewReader(params.Encode())
-	req, err := http.NewRequest("POST", domain+"/pl/login", postData)
+	req, err := http.NewRequest("POST", domain+"/login", postData)
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	_, err = s.client.Do(req)
+	res, err := s.client.Do(req)
 	if err != nil {
+		log.Err(err).Msgf("%v can't login", err)
 		return err
 	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Err(errors.New("can't login")).Msgf("")
+		return err
+	}
+
+	log.Info().Msgf("Succesfull loged in")
 
 	return nil
 }

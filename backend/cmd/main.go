@@ -7,14 +7,15 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	health_controller "github.com/tochamateusz/machine_auction/app"
+	exporter_http "github.com/tochamateusz/machine_auction/app/exporter/adapters/http"
 	scrapper_http "github.com/tochamateusz/machine_auction/app/scrapper/adapters/http"
 	"github.com/tochamateusz/machine_auction/infrastructure"
 	"github.com/tochamateusz/machine_auction/infrastructure/server"
 )
 
 func main() {
-	infrastructure.InitLogger()
 	infrastructure.InitEnv()
+	infrastructure.InitLogger()
 
 	gin.DebugPrintRouteFunc = infrastructure.GinDebugPrintRouteFunc
 	r := gin.New()
@@ -40,6 +41,7 @@ func main() {
 	r.Static("/static/", "./web/dist/")
 	r.Static("/assets/", "./web/dist/assets")
 	scrapper_http.Init(r)
+	exporter_http.Init(r)
 
 	server.InitServer(r)
 

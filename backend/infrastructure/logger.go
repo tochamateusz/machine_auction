@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gookit/goutil/dump"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
@@ -19,11 +20,12 @@ func GinDebugPrintRouteFunc(httpMethod, absolutePath, handlerName string, nuHand
 
 func InitLogger() {
 	dev := os.Getenv("DEV")
-	color := false
+	dump.P("DEV:", dev)
+	noColor := false
 	if dev == "" {
-		color = true
+		noColor = true
 	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: color})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: noColor})
 
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)

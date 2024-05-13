@@ -63,13 +63,14 @@ func (f *FileAuctionRepository) GetAll() []auction.Auction {
 }
 
 type AuctionDataModel struct {
-	Id          string   `json:"id"`
-	Image       string   `json:"image"`
-	Name        string   `json:"name"`
-	Year        string   `json:"year"`
-	Price       string   `json:"price"`
-	EndDate     string   `json:"end_date"`
-	Description []string `json:"description,omitempty"`
+	Id            string   `json:"id"`
+	Image         string   `json:"image"`
+	Name          string   `json:"name"`
+	Year          string   `json:"year"`
+	Price         string   `json:"price"`
+	EndDate       string   `json:"end_date"`
+	Description   []string `json:"description,omitempty"`
+	StartingPrice string   `json:"starting_price"`
 }
 
 // Save implements AuctionRepository.
@@ -95,13 +96,14 @@ func (f *FileAuctionRepository) Save(a auction.Auction) {
 	}
 
 	auctionDataModel[a.Id()] = AuctionDataModel{
-		Id:          a.Id(),
-		Image:       a.Image(),
-		Name:        a.Name(),
-		Year:        a.Year(),
-		Price:       a.Price(),
-		EndDate:     a.EndDate(),
-		Description: a.Description(),
+		Id:            a.Id(),
+		Image:         a.Image(),
+		Name:          a.Name(),
+		Year:          a.Year(),
+		Price:         a.Price(),
+		EndDate:       a.EndDate(),
+		Description:   a.Description(),
+		StartingPrice: a.StartingPrice(),
 	}
 
 	bytes, err := json.Marshal(auctionDataModel)

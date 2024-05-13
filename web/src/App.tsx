@@ -13,6 +13,7 @@ export type Auction = {
   price: string;
   end_date: string;
   description: string[];
+  starting_price: string;
 };
 
 type States =

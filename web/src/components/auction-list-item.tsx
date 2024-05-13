@@ -29,9 +29,8 @@ export const ListAuction: React.FC<Props> = ({ auction, onClick }) => {
             <CardMedia
               component="img"
               height="250"
-              image={`${import.meta.env.VITE_DOMAIN}/scrapped/${
-                auction.id
-              }/0.jpg`}
+              image={`${import.meta.env.VITE_DOMAIN}/scrapped/${auction.id
+                }/0.jpg`}
               alt="machine"
             />
           </Grid>
@@ -79,11 +78,16 @@ export const ListAuction: React.FC<Props> = ({ auction, onClick }) => {
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", marginX: "0.5rem" }}>
+                <Typography variant="body2" color="text.primary">
+                  {auction.starting_price}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", marginX: "0.5rem" }}>
                 <Typography variant="body2" color="text.secondary">
                   <>
-                  {(auction.description || []).map((description)=>{
-                    return <div>{description}</div>
-                  })}
+                    {(auction.description || []).map((description) => {
+                      return <div>{description}</div>
+                    })}
                   </>
                 </Typography>
               </Box>

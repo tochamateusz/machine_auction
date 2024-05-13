@@ -35,7 +35,11 @@ func Init(r *gin.Engine) {
 		panic(err)
 	}
 
-	scrapper.Login()
+	err = scrapper.Login()
+	if err != nil {
+		log.Fatal().Err(err).Msgf("can't init scrapper")
+		return
+	}
 	scrapper.PrintCookie()
 
 	eventBus := events.NewEventBus()
@@ -110,6 +114,17 @@ func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
 		go h.repository.Save(acution)
 	})
 
+	h.scrapper.RegisterOnStartingPrice(func(s auctionScrapper.StartingPriceFound) {
+		acution := h.repository.Get(s.Id)
+		if acution.Id() != s.Id {
+			return
+		}
+
+		acution.DefineStartingPrice(s.StartingPrice)
+		go h.repository.Save(acution)
+
+	})
+
 	h.eventBus.Dispatch("auctions.founded", auction.AuctionsFounded{
 		Id:      uuid.NewString(),
 		Auction: auctions,
@@ -142,24 +157,26 @@ func (h *HttpScrapperApi) Get(ctx *gin.Context) {
 	auction := h.repository.Get(id)
 	log.Info().Msgf("GET: auction: %+v\n", auction)
 	ctx.JSON(http.StatusOK, AuctionDTO{
-		Id:          auction.Id(),
-		Image:       auction.Image(),
-		Name:        auction.Name(),
-		Year:        auction.Year(),
-		Price:       auction.Price(),
-		EndDate:     auction.EndDate(),
-		Description: auction.Description(),
+		Id:            auction.Id(),
+		Image:         auction.Image(),
+		Name:          auction.Name(),
+		Year:          auction.Year(),
+		Price:         auction.Price(),
+		EndDate:       auction.EndDate(),
+		Description:   auction.Description(),
+		StartingPrice: auction.StartingPrice(),
 	})
 }
 
 type AuctionDTO struct {
-	Id          string   `json:"id"`
-	Image       string   `json:"image"`
-	Name        string   `json:"name"`
-	Year        string   `json:"year"`
-	Price       string   `json:"price"`
-	EndDate     string   `json:"end_date"`
-	Description []string `json:"description"`
+	Id            string   `json:"id"`
+	Image         string   `json:"image"`
+	Name          string   `json:"name"`
+	Year          string   `json:"year"`
+	Price         string   `json:"price"`
+	EndDate       string   `json:"end_date"`
+	Description   []string `json:"description"`
+	StartingPrice string   `json:"starting_price"`
 }
 
 func (h *HttpScrapperApi) TEST(ctx *gin.Context) {
