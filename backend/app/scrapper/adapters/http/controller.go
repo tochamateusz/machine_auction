@@ -35,13 +35,6 @@ func Init(r *gin.Engine) {
 		panic(err)
 	}
 
-	err = scrapper.Login()
-	if err != nil {
-		log.Fatal().Err(err).Msgf("can't init scrapper")
-		return
-	}
-	scrapper.PrintCookie()
-
 	eventBus := events.NewEventBus()
 	eventBus.Listen("auction.founded", scrapper.OnAuctionFound)
 	eventBus.Listen("auctions.founded", func(ctx context.Context, message interface{}) {
@@ -65,6 +58,38 @@ func Init(r *gin.Engine) {
 	})
 
 	go eventBus.Serve(context.Background())
+
+	withCancel, _ := context.WithCancel(context.Background())
+	go func(c context.Context) {
+		tick := time.Tick(time.Hour)
+
+		err = scrapper.Login()
+		if err != nil {
+			log.Fatal().Err(err).Msgf("can't init scrapper")
+			return
+		}
+		scrapper.PrintCookie()
+
+		for {
+			select {
+			case _ = <-tick:
+				{
+					scrapper.Login()
+
+					if err != nil {
+						log.Fatal().Err(err).Msgf("can't init scrapper")
+						return
+					}
+					scrapper.PrintCookie()
+				}
+			case <-c.Done():
+				{
+					break
+				}
+			}
+		}
+
+	}(withCancel)
 
 	repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
