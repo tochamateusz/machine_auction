@@ -18,7 +18,7 @@ interface Props {
 
 export const ListAuction: React.FC<Props> = ({ auction, onClick }) => {
   return (
-    <Card sx={{ maxWidth: 600, width: 600, marginY: "1rem", marginX: "1rem" }}>
+    <Card key={auction.id} sx={{ maxWidth: 700, width: 700, marginY: "1rem", marginX: "1rem" }}>
       <CardActionArea
         onClick={() => {
           onClick && onClick(auction);
@@ -82,14 +82,12 @@ export const ListAuction: React.FC<Props> = ({ auction, onClick }) => {
                   {auction.starting_price}
                 </Typography>
               </Box>
-              <Box sx={{ display: "flex", marginX: "0.5rem" }}>
-                <Typography variant="body2" color="text.secondary">
-                  <>
-                    {(auction.description || []).map((description) => {
-                      return <div>{description}</div>
-                    })}
-                  </>
-                </Typography>
+              <Box sx={{ marginX: "0.5rem" }}>
+                {(auction.description || []).map((description, index) => {
+                  return (<Typography key={index} display={"block"} variant="body2" color="text.secondary">
+                    {description}
+                  </Typography>)
+                })}
               </Box>
             </CardContent>
           </Grid>

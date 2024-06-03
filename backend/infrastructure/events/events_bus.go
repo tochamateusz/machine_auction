@@ -84,7 +84,7 @@ type IEventBus interface {
 
 func NewEventBus() IEventBus {
 	return EventBus{
-		Bus:      make(chan Bus),
+		Bus:      make(chan Bus, 3),
 		handlers: map[string][]func(ctx context.Context, message interface{}){},
 	}
 }

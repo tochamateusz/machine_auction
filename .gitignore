@@ -3,3 +3,5 @@
 /backend/scrapping-result2/*
 /backend/scrapping-result3/*
 /backend/scrapping-result4/*
+*.xlsx
+*.jpg

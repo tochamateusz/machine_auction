@@ -253,7 +253,7 @@ func (s *Scrapper) SaveImage(url string, path string) {
 	}
 	r, err := client.Do(req)
 	if err != nil {
-		log.Err(err).Msgf("cannot get image  %+v\n", r.Request.URL)
+		log.Err(err).Msgf("cannot get image  %+v\n", url)
 		return
 	}
 	defer r.Body.Close()
@@ -267,6 +267,7 @@ func (s *Scrapper) SaveImage(url string, path string) {
 }
 
 func (s *Scrapper) GetAuctions() ([]auction.Auction, error) {
+	s.Login()
 	auctions, err := s.getMyObservation()
 	if err != nil {
 		return nil, err
@@ -383,6 +384,8 @@ func (s *Scrapper) Login() error {
 		log.Err(errors.New("can't login")).Msgf("")
 		return err
 	}
+
+	s.PrintCookie()
 
 	log.Info().Msgf("Succesfull loged in")
 

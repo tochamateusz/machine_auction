@@ -74,12 +74,13 @@ func (f *FileScrappedAuctionsRepository) Save(auction scrapping.ScrappedAuctions
 	json.Unmarshal(raw, &scrappedAuctionsDataModel)
 
 	auctionDataModel := auction_file.AuctionDataModel{
-		Id:      auction.Auction.Id(),
-		Image:   auction.Auction.Image(),
-		Name:    auction.Auction.Name(),
-		Year:    auction.Auction.Year(),
-		Price:   auction.Auction.Price(),
-		EndDate: auction.Auction.EndDate(),
+		Id:        auction.Auction.Id(),
+		Image:     auction.Auction.Image(),
+		Name:      auction.Auction.Name(),
+		Year:      auction.Auction.Year(),
+		CreatedAt: auction.Auction.CreatedAt(),
+		Price:     auction.Auction.Price(),
+		EndDate:   auction.Auction.EndDate(),
 	}
 
 	scrappedAuctionsDataModel = append(scrappedAuctionsDataModel, ScrappedAuctionsDataModel{

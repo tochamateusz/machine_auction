@@ -69,6 +69,7 @@ type AuctionDataModel struct {
 	Year          string   `json:"year"`
 	Price         string   `json:"price"`
 	EndDate       string   `json:"end_date"`
+	CreatedAt     string   `json:"create_at"`
 	Description   []string `json:"description,omitempty"`
 	StartingPrice string   `json:"starting_price"`
 }

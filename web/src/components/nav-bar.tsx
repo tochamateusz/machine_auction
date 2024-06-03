@@ -1,14 +1,15 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { assertState } from "../types/assetType";
 import axios from "axios";
+import { Auction } from "../App";
 
 type States =
   | { type: "INIT" }
   | { type: "LOADING_BACKUP" }
   | { type: "LOADED"; scrappingEvents: any; auctions: any };
 
-export const NavBar = () => {
+export const NavBar = ({ onToggleView, auctions }: { onToggleView: () => void, auctions: Auction[] }) => {
   const [backupState, setBackup] = useState<States>({
     type: "INIT",
   });
@@ -38,7 +39,7 @@ export const NavBar = () => {
   const scrap = async () => {
     try {
       await axios.post(`${import.meta.env.VITE_DOMAIN}/scrapper/start`, {});
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const auctionsLink = useRef<HTMLAnchorElement>(null);
@@ -63,7 +64,7 @@ export const NavBar = () => {
     <Box
       sx={{
         display: "flex",
-        width: "300px",
+        width: "800px",
         justifyContent: "space-between",
       }}
     >
@@ -80,6 +81,16 @@ export const NavBar = () => {
       </Button>
       <Button
         variant="contained"
+        sx={{
+          background: "#025E73",
+          ":hover": { background: "#A5A692" },
+        }}
+        onClick={onToggleView}
+      >
+        Toogle View
+      </Button>
+      <Button
+        variant="contained"
         onClick={backup}
         sx={{
           background: "#025E73",
@@ -88,6 +99,14 @@ export const NavBar = () => {
       >
         Get backup
       </Button>
+      <Autocomplete
+        disablePortal
+        id="filter-auctions"
+        options={auctions.map((a) => { return { label: a.name, id: a.id } })}
+        sx={{ width: 300 }}
+        renderInput={(params) => <TextField {...params} label="Auctions" />}
+      />
+
 
       {backupState.type == "LOADED" ? (
         <Box>

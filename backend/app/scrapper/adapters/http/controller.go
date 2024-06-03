@@ -49,6 +49,7 @@ func Init(r *gin.Engine) {
 			return
 		}
 		for _, v := range auction.Auction {
+			v.CreatedAtDate(time.Now().Format(time.DateTime))
 			scrappingRepository.Save(scrapping.ScrappedAuctions{
 				Id:        auction.Id,
 				Triggered: time.Now().Format(time.RFC3339Nano),
@@ -58,38 +59,6 @@ func Init(r *gin.Engine) {
 	})
 
 	go eventBus.Serve(context.Background())
-
-	withCancel, _ := context.WithCancel(context.Background())
-	go func(c context.Context) {
-		tick := time.Tick(time.Hour)
-
-		err = scrapper.Login()
-		if err != nil {
-			log.Fatal().Err(err).Msgf("can't init scrapper")
-			return
-		}
-		scrapper.PrintCookie()
-
-		for {
-			select {
-			case _ = <-tick:
-				{
-					scrapper.Login()
-
-					if err != nil {
-						log.Fatal().Err(err).Msgf("can't init scrapper")
-						return
-					}
-					scrapper.PrintCookie()
-				}
-			case <-c.Done():
-				{
-					break
-				}
-			}
-		}
-
-	}(withCancel)
 
 	repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
@@ -156,11 +125,11 @@ func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
 	})
 
 	for _, v := range auctions {
-		go h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
+		h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
 			Auction: v,
 		})
 
-		go h.repository.Save(v)
+		h.repository.Save(v)
 	}
 
 	ctx.Writer.WriteHeader(http.StatusOK)

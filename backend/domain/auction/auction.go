@@ -1,12 +1,13 @@
 package auction
 
 type Auction struct {
-	id      string
-	image   string
-	name    string
-	year    string
-	price   string
-	endDate string
+	id        string
+	image     string
+	name      string
+	year      string
+	price     string
+	endDate   string
+	createdAt string
 
 	startingPrice string
 	description   []string
@@ -14,7 +15,7 @@ type Auction struct {
 
 func NewAuction(id, image, name, year, price, endDate string) *Auction {
 	return &Auction{
-		id, image, name, year, price, endDate, "", []string{},
+		id, image, name, year, price, endDate, "", "", []string{},
 	}
 }
 
@@ -32,6 +33,14 @@ func (a *Auction) Description() []string {
 
 func (a *Auction) StartingPrice() string {
 	return a.startingPrice
+}
+
+func (a *Auction) CreatedAtDate(date string) {
+	a.createdAt = date
+}
+
+func (a *Auction) CreatedAt() string {
+	return a.createdAt
 }
 
 func (a *Auction) DefineStartingPrice(s string) {

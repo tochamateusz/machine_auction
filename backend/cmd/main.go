@@ -19,8 +19,10 @@ func main() {
 
 	gin.DebugPrintRouteFunc = infrastructure.GinDebugPrintRouteFunc
 	r := gin.New()
-	r.Use(infrastructure.Logger)
-	r.Use(ginzerolog.Logger("gin"))
+	r.Static("/scrapped/", "./scrapping-result/")
+	r.Static("/backup/", "./db/")
+	r.Static("/static/", "./web/dist/")
+	r.Static("/assets/", "./web/dist/assets")
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "https://machine-auction-0-0-1-6dpaaunyfa-lm.a.run.app"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
@@ -33,13 +35,13 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	}))
 
+  withLogger:=r
+	withLogger.Use(infrastructure.Logger)
+	withLogger.Use(ginzerolog.Logger("gin"))
+
 	health := health_controller.NewHandler()
 
-	r.GET("/health", health.DbHealthCheck)
-	r.Static("/scrapped/", "./scrapping-result/")
-	r.Static("/backup/", "./db/")
-	r.Static("/static/", "./web/dist/")
-	r.Static("/assets/", "./web/dist/assets")
+	withLogger.GET("/health", health.DbHealthCheck)
 	scrapper_http.Init(r)
 	// exporter_http.Init(r)
 
