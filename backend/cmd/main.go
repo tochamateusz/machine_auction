@@ -7,7 +7,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	health_controller "github.com/tochamateusz/machine_auction/app"
-	// exporter_http "github.com/tochamateusz/machine_auction/app/exporter/adapters/http"
 	scrapper_http "github.com/tochamateusz/machine_auction/app/scrapper/adapters/http"
 	"github.com/tochamateusz/machine_auction/infrastructure"
 	"github.com/tochamateusz/machine_auction/infrastructure/server"
@@ -35,7 +34,7 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	}))
 
-  withLogger:=r
+	withLogger := r
 	withLogger.Use(infrastructure.Logger)
 	withLogger.Use(ginzerolog.Logger("gin"))
 

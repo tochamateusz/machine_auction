@@ -2,6 +2,7 @@ package auction_file
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -133,10 +134,17 @@ func (f *FileAuctionRepository) Save(a auction.Auction) {
 }
 
 func NewFileAuctionRepository() (auction.Repository, error) {
-	file, err := os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 777)
+	var file *os.File
+	var err error
+
+	file, err = os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 777)
 	if err != nil {
-		return nil, fmt.Errorf("cannnot create scrapper")
+		file, err = os.Create(storePath)
+		if err != nil {
+			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
+		}
 	}
+
 	return &FileAuctionRepository{
 		file:    file,
 		mu:      &sync.Mutex{},

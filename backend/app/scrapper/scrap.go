@@ -59,21 +59,20 @@ func NewScrapper() (*Scrapper, error) {
 		log.Info().Msgf("Creating")
 		file, err = os.Create(indexHtml)
 		if err != nil {
-
 			log.Err(err).Msgf("bad request")
-			return nil, fmt.Errorf("cannnot create scrapper")
+			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
 		}
 		fileInfo, err = file.Stat()
 		if err != nil {
 
 			log.Err(err).Msgf("bad request")
-			return nil, fmt.Errorf("cannnot create scrapper")
+			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
 		}
 	} else {
 		file, err = os.OpenFile(indexHtml, os.O_RDWR, 0777)
 		if err != nil {
 			log.Err(err).Msgf("bad request")
-			return nil, fmt.Errorf("cannnot create scrapper")
+			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
 		}
 	}
 	log.Info().Msgf("Founded: %+v\n", fileInfo.Name())

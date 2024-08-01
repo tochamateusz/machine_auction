@@ -60,7 +60,7 @@ func Init(r *gin.Engine) {
 
 	go eventBus.Serve(context.Background())
 
-	repository, err := auction_file.NewFileAuctionRepository()
+  repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
 		log.Fatal().Err(err).Msgf("%p", err)
 	}

@@ -5,30 +5,44 @@ import { useEffect, useState } from "react";
 export type States =
   | { type: "INIT" }
   | { type: "LOADING_AUCTIONS" }
-  | { type: "AUCTIONS_LOADED"; auctions: Auction[], onOpen: (a: Auction) => () => void }
+  | {
+    type: "AUCTIONS_LOADED";
+    auctions: Auction[];
+    onOpen: (a: Auction) => () => void;
+  }
   | { type: "AUCTIONS_LOADING_ERROR"; error: any }
-  | { type: "MODAL_OPEN"; auctions: Auction[]; selectedAuction: Auction, onClose: () => void };
+  | {
+    type: "MODAL_OPEN";
+    auctions: Auction[];
+    selectedAuction: Auction;
+    onClose: () => void;
+  };
 
-export const useObservedAuction = () => {
+export const useObservedAuction = ({
+  filter,
+}: {
+  filter?: (auction: Auction) => Boolean;
+}) => {
   const [observedAuctionsState, setObservedAuctionsState] = useState<States>({
     type: "INIT",
   });
-
 
   const getAuctions = async () => {
     setObservedAuctionsState({ type: "LOADING_AUCTIONS" });
     try {
       const auctions = await axios.get<Auction[]>(
-        `${import.meta.env.VITE_DOMAIN}/scrapper`,
+        `${import.meta.env.VITE_DOMAIN}/scrapper`
       );
 
       const onClose = () => {
         setObservedAuctionsState({
           type: "AUCTIONS_LOADED",
-          auctions: auctions.data,
+          auctions: (auctions.data || []).filter((v) =>
+            !!filter ? filter(v) : true
+          ),
           onOpen: onOpen,
         });
-      }
+      };
 
       const onOpen = (a: Auction) => () => {
         setObservedAuctionsState({
@@ -37,14 +51,13 @@ export const useObservedAuction = () => {
           selectedAuction: a,
           onClose: onClose,
         });
-      }
+      };
 
       setObservedAuctionsState({
         type: "AUCTIONS_LOADED",
         auctions: auctions.data,
-        onOpen: onOpen
-      })
-
+        onOpen: onOpen,
+      });
     } catch (e) {
       setObservedAuctionsState({
         type: "AUCTIONS_LOADING_ERROR",
@@ -62,5 +75,5 @@ export const useObservedAuction = () => {
     }
   }, [observedAuctionsState]);
 
-  return observedAuctionsState
-}
+  return observedAuctionsState;
+};

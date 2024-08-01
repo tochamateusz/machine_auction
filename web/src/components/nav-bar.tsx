@@ -1,4 +1,4 @@
-import { Autocomplete, Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, Input, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { assertState } from "../types/assetType";
 import axios from "axios";
@@ -9,7 +9,14 @@ type States =
   | { type: "LOADING_BACKUP" }
   | { type: "LOADED"; scrappingEvents: any; auctions: any };
 
-export const NavBar = ({ onToggleView, auctions }: { onToggleView: () => void, auctions: Auction[] }) => {
+export const NavBar = ({
+  onToggleView,
+  filter,
+}: {
+  onToggleView: () => void;
+  filter: (_: Auction) => Boolean;
+  auctions: Auction[];
+}) => {
   const [backupState, setBackup] = useState<States>({
     type: "INIT",
   });
@@ -18,10 +25,10 @@ export const NavBar = ({ onToggleView, auctions }: { onToggleView: () => void, a
     assertState(backupState, "INIT", "LOADED");
     setBackup({ type: "LOADING_BACKUP" });
     const auctionsRes = await fetch(
-      `${import.meta.env.VITE_DOMAIN}/backup/auctions.json`,
+      `${import.meta.env.VITE_DOMAIN}/backup/auctions.json`
     );
     const scrappingEventsRes = await fetch(
-      `${import.meta.env.VITE_DOMAIN}/backup/scrapping-events.json`,
+      `${import.meta.env.VITE_DOMAIN}/backup/scrapping-events.json`
     );
     const auctions = await auctionsRes.blob();
     const scrappingEvents = await scrappingEventsRes.blob();
@@ -99,14 +106,13 @@ export const NavBar = ({ onToggleView, auctions }: { onToggleView: () => void, a
       >
         Get backup
       </Button>
-      <Autocomplete
-        disablePortal
-        id="filter-auctions"
-        options={auctions.map((a) => { return { label: a.name, id: a.id } })}
-        sx={{ width: 300 }}
-        renderInput={(params) => <TextField {...params} label="Auctions" />}
+      <Input
+        value={""}
+        onChange={(e) => {
+          filter(e.target.value);
+        }}
+        placeholder="Placeholder"
       />
-
 
       {backupState.type == "LOADED" ? (
         <Box>
