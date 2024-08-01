@@ -107,9 +107,9 @@ func NewFileScrappedAuctionsRepository() (scrapping.Repository, error) {
 	var file *os.File
 	var err error
 
-	file, err = os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 777)
+	file, err = os.OpenFile(storePath, os.O_RDWR, 0777)
 	if err != nil {
-		file, err = os.Create(storePath)
+		file, err = os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 0777)
 		if err != nil {
 			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
 		}

@@ -200,11 +200,6 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 		})
 	})
 
-	s.descriptionFounded <- DescriptionFounded{
-		Id:          auctionFounded.Auction.Id(),
-		Description: description,
-	}
-
 	detailFile, e := os.Create("./scrapping-result/" + auctionFounded.Auction.Id() + "/detail.html") // "m1UIjW1.jpg"
 	htmlDetailSection, _ := detailSelection.Html()
 
@@ -212,13 +207,19 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 
 	startingPrice := strings.TrimSpace(doc.Find("div.mt-n2:nth-child(1) > span:nth-child(1)").Text())
 
-	s.startingPriceFound <- StartingPriceFound{
-		Id:            auctionFounded.Auction.Id(),
-		StartingPrice: startingPrice,
-	}
 
 	s.done <- struct{ Id string }{
 		Id: auctionFounded.Auction.Id(),
+	}
+
+	s.descriptionFounded <- DescriptionFounded{
+		Id:          auctionFounded.Auction.Id(),
+		Description: description,
+	}
+
+	s.startingPriceFound <- StartingPriceFound{
+		Id:            auctionFounded.Auction.Id(),
+		StartingPrice: startingPrice,
 	}
 
 }

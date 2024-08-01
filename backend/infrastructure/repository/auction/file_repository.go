@@ -115,11 +115,6 @@ func (f *FileAuctionRepository) Save(a auction.Auction) {
 
 	f.file.Truncate(0)
 	f.file.Seek(0, 0)
-	if err != nil {
-		log.Err(err).Msg("cannot write auction store")
-		return
-	}
-
 	_, err = f.file.WriteString(string(bytes))
 	if err != nil {
 		log.Err(err).Msg("cannot write auction store")
@@ -137,11 +132,11 @@ func NewFileAuctionRepository() (auction.Repository, error) {
 	var file *os.File
 	var err error
 
-	file, err = os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 777)
+	file, err = os.OpenFile(storePath, os.O_RDWR, 0777)
 	if err != nil {
-		file, err = os.Create(storePath)
+		file, err = os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 0777)
 		if err != nil {
-			return nil, errors.Join(err, fmt.Errorf("cannot create scrapper"))
+			return nil, errors.Join(err, fmt.Errorf("cannot create acution repositry"))
 		}
 	}
 

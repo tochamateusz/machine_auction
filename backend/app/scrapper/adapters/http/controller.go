@@ -3,12 +3,11 @@ package http
 import (
 	"context"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	auctionScrapper "github.com/tochamateusz/machine_auction/app/scrapper"
 	"github.com/tochamateusz/machine_auction/domain/auction"
 	"github.com/tochamateusz/machine_auction/domain/scrapping"
@@ -60,7 +59,7 @@ func Init(r *gin.Engine) {
 
 	go eventBus.Serve(context.Background())
 
-  repository, err := auction_file.NewFileAuctionRepository()
+	repository, err := auction_file.NewFileAuctionRepository()
 	if err != nil {
 		log.Fatal().Err(err).Msgf("%p", err)
 	}
@@ -76,7 +75,24 @@ func Init(r *gin.Engine) {
 	scrapperGroup.GET("/images/:id", http_client.GetAllImage)
 	scrapperGroup.GET("", http_client.GetAll)
 	scrapperGroup.GET("test", http_client.TEST)
+}
 
+type Fullfill struct {
+	rawAuction acutions_events.Auction
+	done       bool
+	Name       string
+}
+
+func NewFullfillPorcess(a acutions_events.Auction) *Fullfill {
+	return &Fullfill{
+		rawAuction: a,
+		done:       false,
+		Name:       a.Name(),
+	}
+}
+
+func (f *Fullfill) Done() {
+	f.done = true
 }
 
 func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
@@ -86,53 +102,60 @@ func (h *HttpScrapperApi) BaseScrap(ctx *gin.Context) {
 		return
 	}
 
-	mapAuctions := make(map[string]bool)
-	mutex := sync.Mutex{}
+	mapAuctions := make(map[string]*Fullfill)
 
-	h.scrapper.RegisterDone(func(done string) {
-		mutex.Lock()
-		defer mutex.Unlock()
-		mapAuctions[done] = true
-		if len(mapAuctions) == len(auctions) {
-			log.Info().Msgf("All scrapped jobs done")
-		}
-	})
+	mapAuctions = lo.Reduce(auctions,
+		func(agg map[string]*Fullfill, a acutions_events.Auction, _ int) map[string]*Fullfill {
+			agg[a.Id()] = NewFullfillPorcess(a)
+			return agg
+		}, mapAuctions)
 
-	h.scrapper.RegisterOnDescriptionFound(func(d auctionScrapper.DescriptionFounded) {
-		acution := h.repository.Get(d.Id)
-		if acution.Id() != d.Id {
-			return
-		}
-		acution.Describe(d.Description)
+	// mutex := sync.Mutex{}
 
-		go h.repository.Save(acution)
-	})
+	// h.scrapper.RegisterDone(func(done string) {
+	// 	mutex.Lock()
+	// 	defer mutex.Unlock()
+	// 	// mapAuctions[done] = true
+	// 	if len(mapAuctions) == len(auctions) {
+	// 		log.Info().Msgf("All scrapped jobs done")
+	// 	}
+	// })
 
-	h.scrapper.RegisterOnStartingPrice(func(s auctionScrapper.StartingPriceFound) {
-		acution := h.repository.Get(s.Id)
-		if acution.Id() != s.Id {
-			return
-		}
+	// h.scrapper.RegisterOnDescriptionFound(func(d auctionScrapper.DescriptionFounded) {
+	// 	auction := h.repository.Get(d.Id)
+	// 	if auction.Id() != d.Id {
+	// 		return
+	// 	}
+	// 	auction.Describe(d.Description)
 
-		acution.DefineStartingPrice(s.StartingPrice)
-		go h.repository.Save(acution)
+	// 	go h.repository.Save(auction)
+	// })
 
-	})
+	// h.scrapper.RegisterOnStartingPrice(func(s auctionScrapper.StartingPriceFound) {
+	// 	acution := h.repository.Get(s.Id)
+	// 	if acution.Id() != s.Id {
+	// 		return
+	// 	}
 
-	h.eventBus.Dispatch("auctions.founded", auction.AuctionsFounded{
-		Id:      uuid.NewString(),
-		Auction: auctions,
-	})
+	// 	acution.DefineStartingPrice(s.StartingPrice)
+	// 	go h.repository.Save(acution)
 
-	for _, v := range auctions {
-		h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
-			Auction: v,
-		})
+	// })
 
-		h.repository.Save(v)
-	}
+	// h.eventBus.Dispatch("auctions.founded", auction.AuctionsFounded{
+	// 	Id:      uuid.NewString(),
+	// 	Auction: auctions,
+	// })
 
-	ctx.Writer.WriteHeader(http.StatusOK)
+	// for _, v := range auctions {
+	// 	h.eventBus.Dispatch("auction.founded", auction.AuctionFounded{
+	// 		Auction: v,
+	// 	})
+
+	// 	h.repository.Save(v)
+	// }
+
+	ctx.JSON(http.StatusOK, mapAuctions)
 }
 
 func (h *HttpScrapperApi) GetAllImage(ctx *gin.Context) {
