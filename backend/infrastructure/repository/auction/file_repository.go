@@ -138,6 +138,15 @@ func NewFileAuctionRepository() (auction.Repository, error) {
 		if err != nil {
 			return nil, errors.Join(err, fmt.Errorf("cannot create acution repositry"))
 		}
+
+		auctionDataModel := make(map[string]AuctionDataModel)
+		bytes, err := json.Marshal(auctionDataModel)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = file.WriteString(string(bytes))
+
 	}
 
 	return &FileAuctionRepository{

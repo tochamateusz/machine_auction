@@ -55,7 +55,9 @@ export const useObservedAuction = ({
 
       setObservedAuctionsState({
         type: "AUCTIONS_LOADED",
-        auctions: auctions.data,
+        auctions: (auctions.data || []).filter((v) =>
+          !!filter ? filter(v) : true
+        ),
         onOpen: onOpen,
       });
     } catch (e) {

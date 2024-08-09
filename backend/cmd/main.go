@@ -42,7 +42,6 @@ func main() {
 
 	withLogger.GET("/health", health.DbHealthCheck)
 	scrapper_http.Init(r)
-	// exporter_http.Init(r)
 
 	server.InitServer(r)
 

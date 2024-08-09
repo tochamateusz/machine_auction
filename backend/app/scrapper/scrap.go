@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/gookit/goutil/dump"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/tochamateusz/machine_auction/domain/auction"
 )
 
@@ -34,21 +36,20 @@ type StartingPriceFound struct {
 }
 
 type Scrapper struct {
-	client *http.Client
-	file   *os.File
+	client     *http.Client
+	file       *os.File
+	repository auction.Repository
 
 	done               chan struct{ Id string }
 	descriptionFounded chan DescriptionFounded
 	startingPriceFound chan StartingPriceFound
 
-	onDone                 func(id string)
-	onDescriptionFound     func(DescriptionFounded)
-	onStartingPriceFounded func(StartingPriceFound)
+	auctionsMap map[string]*Fullfill
 
 	mu *sync.Mutex
 }
 
-func NewScrapper() (*Scrapper, error) {
+func NewScrapper(repository auction.Repository) (*Scrapper, error) {
 
 	indexHtml := scrappingResultDir + "index.html"
 	fileInfo, err := os.Stat(indexHtml)
@@ -88,67 +89,91 @@ func NewScrapper() (*Scrapper, error) {
 	scrapper := &Scrapper{
 		client,
 		file,
+		repository,
 		make(chan struct{ Id string }),
 		make(chan DescriptionFounded),
 		make(chan StartingPriceFound),
-		func(id string) {},
-		func(DescriptionFounded) {},
-		func(StartingPriceFound) {},
+		nil,
 		&sync.Mutex{},
 	}
 
 	go scrapper.listen(context.Background())
-
 	return scrapper, nil
 }
 
-func (s *Scrapper) listen(ctx context.Context) {
+func (s *Scrapper) Scrap(ctx context.Context, auctions []auction.Auction) map[string]*Fullfill {
+
+	mapAuctions := make(map[string]*Fullfill)
+
+	mapAuctions = lo.Reduce(auctions,
+		func(agg map[string]*Fullfill, a auction.Auction, _ int) map[string]*Fullfill {
+			agg[a.Id()] = NewFullfillPorcess(a)
+			return agg
+		}, mapAuctions)
+
+	s.auctionsMap = mapAuctions
+
+	return mapAuctions
+}
+
+func (s *Scrapper) listen(_ context.Context) {
+listenLoop:
 	for {
 		select {
 		case done := <-s.done:
 			{
-				s.onDone(done.Id)
+				dump.P(s.auctionsMap)
+				process, ok := s.auctionsMap[done.Id]
+				if !ok {
+					log.Logger.Debug().Caller().Err(errors.New("auction id: [" + done.Id + "] not exist")).Msg("")
+					continue
+				}
+				process.Done()
+				delete(s.auctionsMap, done.Id)
+				s.repository.Save(process.rawAuction)
+				log.Info().Msgf("Auction Id:%s is done. %d left", done.Id, len(s.auctionsMap))
+				if len(s.auctionsMap) <= 0 {
+					break listenLoop
+				}
 			}
 
 		case description := <-s.descriptionFounded:
 			{
-				s.onDescriptionFound(description)
+				process, ok := s.auctionsMap[description.Id]
+				if !ok {
+					log.Logger.Debug().Caller().Err(errors.New("auction id: [" + description.Id + "] not exist")).Msg("")
+					continue
+				}
+				process.Description(description.Description)
 			}
 
 		case startingPrice := <-s.startingPriceFound:
 			{
-				s.onStartingPriceFounded(startingPrice)
+				process, ok := s.auctionsMap[startingPrice.Id]
+				if !ok {
+					log.Logger.Debug().Caller().Err(errors.New("auction id: [" + startingPrice.Id + "] not exist")).Msg("")
+					continue
+				}
+				process.StartingPrice(startingPrice.StartingPrice)
 			}
 		}
 	}
 }
 
-func (s *Scrapper) RegisterDone(onDone func(done string)) {
-	s.onDone = onDone
-}
-
-func (s *Scrapper) RegisterOnDescriptionFound(onDescriptionFound func(DescriptionFounded)) {
-	s.onDescriptionFound = onDescriptionFound
-}
-
-func (s *Scrapper) RegisterOnStartingPrice(onStartingPrice func(StartingPriceFound)) {
-	s.onStartingPriceFounded = onStartingPrice
-}
-
 func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
-	auctionFounded, ok := message.(auction.AuctionFounded)
+	auctionFounded, ok := message.(*Fullfill)
 	if ok == false {
 		log.Err(fmt.Errorf("can't parse auction found message")).Msgf("")
 	}
 
 	log.Info().
-		Str("AuctionId", auctionFounded.Auction.Id()).
-		Str("AuctionName", auctionFounded.Auction.Name()).
+		Str("AuctionId", auctionFounded.rawAuction.Id()).
+		Str("AuctionName", auctionFounded.rawAuction.Name()).
 		Msg("Auction requesting...")
 
-	req, err := http.NewRequest("GET", domain+"/auction/"+auctionFounded.Auction.Id(), nil)
+	req, err := http.NewRequest("GET", domain+"/auction/"+auctionFounded.rawAuction.Id(), nil)
 	if err != nil {
-		log.Err(err).Msgf("can't get auction id: %s", auctionFounded.Auction.Id())
+		log.Err(err).Msgf("can't get auction id: %s", auctionFounded.rawAuction.Id())
 	}
 
 	res, err := s.client.Do(req)
@@ -170,12 +195,12 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 		log.Err(err).Msgf("cant read html")
 	}
 
-	err = os.MkdirAll("./scrapping-result/"+auctionFounded.Auction.Id()+"/", 0777)
+	err = os.MkdirAll("./scrapping-result/"+auctionFounded.rawAuction.Id()+"/", 0777)
 	if err != nil {
 		panic(err)
 	}
 
-	f, e := os.Create("./scrapping-result/" + auctionFounded.Auction.Id() + "/index.html") // "m1UIjW1.jpg"
+	f, e := os.Create("./scrapping-result/" + auctionFounded.rawAuction.Id() + "/index.html") // "m1UIjW1.jpg"
 	if e != nil {
 		panic(e)
 	}
@@ -188,7 +213,7 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 		imageSrc, exist := sel.Find(".img-fluid").Attr("src")
 		if exist == true {
 			log.Info().Msgf("Image source: %s", imageSrc)
-			s.SaveImage(imageSrc, "./scrapping-result/"+auctionFounded.Auction.Id()+"/"+fmt.Sprintf("%d", i)+".jpg")
+			s.SaveImage(imageSrc, "./scrapping-result/"+auctionFounded.rawAuction.Id()+"/"+fmt.Sprintf("%d", i)+".jpg")
 		}
 	})
 
@@ -200,26 +225,25 @@ func (s *Scrapper) OnAuctionFound(ctx context.Context, message interface{}) {
 		})
 	})
 
-	detailFile, e := os.Create("./scrapping-result/" + auctionFounded.Auction.Id() + "/detail.html") // "m1UIjW1.jpg"
+	detailFile, e := os.Create("./scrapping-result/" + auctionFounded.rawAuction.Id() + "/detail.html") // "m1UIjW1.jpg"
 	htmlDetailSection, _ := detailSelection.Html()
 
 	detailFile.WriteString(htmlDetailSection)
 
 	startingPrice := strings.TrimSpace(doc.Find("div.mt-n2:nth-child(1) > span:nth-child(1)").Text())
 
-
-	s.done <- struct{ Id string }{
-		Id: auctionFounded.Auction.Id(),
-	}
-
 	s.descriptionFounded <- DescriptionFounded{
-		Id:          auctionFounded.Auction.Id(),
+		Id:          auctionFounded.rawAuction.Id(),
 		Description: description,
 	}
 
 	s.startingPriceFound <- StartingPriceFound{
-		Id:            auctionFounded.Auction.Id(),
+		Id:            auctionFounded.rawAuction.Id(),
 		StartingPrice: startingPrice,
+	}
+
+	s.done <- struct{ Id string }{
+		Id: auctionFounded.rawAuction.Id(),
 	}
 
 }

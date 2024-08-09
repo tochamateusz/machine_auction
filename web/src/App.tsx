@@ -41,7 +41,7 @@ const App = ({ view, observedAuctionsState }: { view: View, observedAuctionsStat
     case "AUCTIONS_LOADED": {
       return (
         <Box sx={{ display: "flex", marginY: "2rem", flexWrap: "wrap" }}>
-          {observedAuctionsState.auctions.map((a) => {
+          {(observedAuctionsState || []).auctions.map((a) => {
             return (
               view({ auction: a, onClick: observedAuctionsState.onOpen(a) })
             );
